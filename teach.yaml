@@ -1,5 +1,5 @@
-container: "ubuntu:16.04"
-image: "my-image"
+container: "ubuntu"
+image: "ubuntu:16.04"
 command: ["bash"]
 profiles:
     - default
