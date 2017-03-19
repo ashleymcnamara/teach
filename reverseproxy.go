@@ -24,7 +24,7 @@ func getTargetInfo(vars map[string]string, req *http.Request) (string, string) {
 		port = "80"
 	}
 
-	if strings.HasPrefix(node, "pwd") {
+	if strings.HasPrefix(node, "learn") {
 		// Node is actually an ip, need to convert underscores by dots.
 		ip := strings.Replace(strings.TrimPrefix(node, "pwd"), "_", ".", -1)
 
