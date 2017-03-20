@@ -579,6 +579,99 @@ func restStartError(w http.ResponseWriter, err error, code statusCode) {
 	}
 }
 
+// exec a command
+
+func restExecHandler(w http.ResponseWriter, r *http.Request) {
+	// func Exec(name string, cmd []string,
+	// env map[string]string, stdin io.ReadCloser,
+	// stdout io.WriteCloser, stderr io.WriteCloser,
+	// controlHandler func(*lxd.Client, *websocket.Conn),
+	// width int, height int) (int, error)
+
+	// Setup websocket with the client
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, "Internal server error", 500)
+		return
+	}
+	defer conn.Close()
+
+	env := make(map[string]string)
+	env["USER"] = "root"
+	env["HOME"] = "/root"
+	env["TERM"] = "xterm"
+
+	inRead, inWrite := io.Pipe()
+	outRead, outWrite := io.Pipe()
+
+	// read handler
+	go func(conn *websocket.Conn, r io.Reader) {
+		in := shared.ReaderToChannel(r, -1)
+
+		for {
+			buf, ok := <-in
+			if !ok {
+				break
+			}
+
+			err := conn.WriteMessage(websocket.TextMessage, buf)
+			if err != nil {
+				break
+			}
+		}
+	}(conn, outRead)
+
+	// writer handler
+	go func(conn *websocket.Conn, w io.Writer) {
+		for {
+			mt, payload, err := conn.ReadMessage()
+			if err != nil {
+				if err != io.EOF {
+					break
+				}
+			}
+
+			switch mt {
+			case websocket.BinaryMessage:
+				continue
+			case websocket.TextMessage:
+				w.Write(payload)
+			default:
+				break
+			}
+		}
+	}(conn, inWrite)
+
+	// control socket handler
+	handler := func(c *lxd.Client, conn *websocket.Conn) {
+		for {
+			_, _, err = conn.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}
+
+	_, err = lxdDaemon.Exec("ubuntu", []string{"ls", "-la"}, env, inRead, outWrite, outWrite, handler, 80, 100)
+
+	inWrite.Close()
+	outRead.Close()
+
+	if err != nil {
+		http.Error(w, "Internal server error", 500)
+		return
+	}
+
+}
+
 func restClientIP(r *http.Request) (string, string, error) {
 	var address string
 	var protocol string
