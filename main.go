@@ -222,6 +222,7 @@ func run() error {
 	r.HandleFunc("/1.0/console", restConsoleHandler)
 	r.HandleFunc("/1.0/feedback", restFeedbackHandler)
 	r.HandleFunc("/1.0/info", restInfoHandler)
+	r.HandleFunc("/1.0/exec", restExecHandler)
 	r.HandleFunc("/1.0/start", restStartHandler)
 	r.HandleFunc("/1.0/statistics", restStatisticsHandler)
 	r.HandleFunc("/1.0/terms", restTermsHandler)
